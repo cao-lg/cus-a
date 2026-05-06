@@ -175,4 +175,4 @@ title: 第10周：全渠道客户体验
 
 ## ✍️ 课后练习
 
-<QuizWidget week="10" />
+<QuizComponent :week="'10'" />

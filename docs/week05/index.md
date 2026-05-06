@@ -160,4 +160,4 @@ title: 第5周：客户细分
 
 ## ✍️ 课后练习
 
-<QuizWidget week="05" />
+<QuizComponent :week="'5'" />

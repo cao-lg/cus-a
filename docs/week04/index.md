@@ -178,4 +178,4 @@ title: 第4周：数据可视化
 
 ## ✍️ 课后练习
 
-<QuizWidget week="04" />
+<QuizComponent :week="'4'" />

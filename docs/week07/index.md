@@ -175,4 +175,4 @@ title: 第7周：客户流失预警
 
 ## ✍️ 课后练习
 
-<QuizWidget week="07" />
+<QuizComponent :week="'7'" />

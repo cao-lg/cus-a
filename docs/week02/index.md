@@ -150,4 +150,4 @@ title: 第2周：数据清洗
 
 ## ✍️ 课后练习
 
-<QuizWidget week="02" />
+<QuizComponent :week="'2'" />

@@ -142,7 +142,7 @@ onMounted(async () => {
   try {
     const weekNum = String(props.week).padStart(2, '0')
     // 使用相对路径，适配任何部署环境
-    const resp = await fetch(`./quizzes/week${weekNum}.json`)
+    const resp = await fetch(`/quizzes/week${weekNum}.json`)
     if (!resp.ok) throw new Error('题目加载失败')
     const data = await resp.json()
     questions.value = data.questions || []

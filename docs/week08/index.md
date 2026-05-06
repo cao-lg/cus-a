@@ -179,4 +179,4 @@ A/B测试背后的统计学原理是“假设检验”，你不需要记住复�
 
 ## ✍️ 课后练习
 
-<QuizWidget week="08" />
+<QuizComponent :week="'8'" />

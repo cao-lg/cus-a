@@ -161,4 +161,4 @@ title: 第15周：综合实战工作坊下
 
 ## ✍️ 课后练习
 
-<QuizWidget week="15" />
+<QuizComponent :week="'15'" />

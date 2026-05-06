@@ -150,4 +150,4 @@ title: 第11周：会员体系与忠诚度
 
 ## ✍️ 课后练习
 
-<QuizWidget week="11" />
+<QuizComponent :week="'11'" />

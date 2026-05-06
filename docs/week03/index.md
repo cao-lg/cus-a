@@ -179,4 +179,4 @@ RFM模型是客户价值分析中最经典、最实用的工具之一。它通�
 
 ## ✍️ 课后练习
 
-<QuizWidget week="03" />
+<QuizComponent :week="'3'" />

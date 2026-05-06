@@ -165,4 +165,4 @@ title: 第12周：数据隐私与伦理
 
 ## ✍️ 课后练习
 
-<QuizWidget week="12" />
+<QuizComponent :week="'12'" />

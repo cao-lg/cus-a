@@ -182,4 +182,4 @@ title: 第6周：客户生命周期价值CLV
 
 ## ✍️ 课后练习
 
-<QuizWidget week="06" />
+<QuizComponent :week="'6'" />

@@ -146,4 +146,4 @@ title: 第1周：数据觉醒
 
 ## ✍️ 课后练习
 
-<QuizWidget week="01" />
+<QuizComponent :week="'1'" />

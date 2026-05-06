@@ -145,4 +145,4 @@ title: 第9周：精准营销与个性化推荐
 
 ## ✍️ 课后练习
 
-<QuizWidget week="09" />
+<QuizComponent :week="'9'" />

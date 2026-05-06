@@ -168,4 +168,4 @@ title: 第14周：综合实战工作坊上
 
 ## ✍️ 课后练习
 
-<QuizWidget week="14" />
+<QuizComponent :week="'14'" />

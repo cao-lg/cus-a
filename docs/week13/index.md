@@ -164,4 +164,4 @@ AI会取代你吗？
 
 ## ✍️ 课后练习
 
-<QuizWidget week="13" />
+<QuizComponent :week="'13'" />

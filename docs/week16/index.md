@@ -166,4 +166,4 @@ AI时代，你的职业规划是什么？
 
 ## ✍️ 课后练习
 
-<QuizWidget week="16" />
+<QuizComponent :week="'16'" />
