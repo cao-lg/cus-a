@@ -92,10 +92,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useData } from 'vitepress'
 
 const props = defineProps({
   week: { type: String, required: true }
 })
+
+const { site } = useData()
 
 const questions = ref([])
 const currentIndex = ref(0)
@@ -141,7 +144,8 @@ function retry() {
 onMounted(async () => {
   try {
     const weekNum = String(props.week).padStart(2, '0')
-    const resp = await fetch(`/quizzes/week${weekNum}.json`)
+    const base = site.value.base || '/'
+    const resp = await fetch(`${base}quizzes/week${weekNum}.json`)
     if (!resp.ok) throw new Error('题目加载失败')
     const data = await resp.json()
     questions.value = data.questions || []
