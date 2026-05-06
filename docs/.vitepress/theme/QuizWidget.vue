@@ -20,7 +20,7 @@
             v-for="(opt, i) in currentQuestion.options"
             :key="i"
             class="quiz-option"
-            :class="{ selected: userAnswers[currentIndex] === i }"
+            :class="userAnswers[currentIndex] === i ? 'selected' : ''"
           >
             <input type="radio" :name="'q' + currentIndex" :value="i" v-model="userAnswers[currentIndex]" />
             <span class="quiz-option-text">{{ opt }}</span>
@@ -29,11 +29,11 @@
 
         <!-- 判断题选项 -->
         <div v-else class="quiz-options quiz-tf">
-          <label class="quiz-option" :class="{ selected: userAnswers[currentIndex] === true }">
+          <label class="quiz-option" :class="userAnswers[currentIndex] === true ? 'selected' : ''">
             <input type="radio" :name="'q' + currentIndex" :value="true" v-model="userAnswers[currentIndex]" />
             <span class="quiz-option-text">✅ 正确</span>
           </label>
-          <label class="quiz-option" :class="{ selected: userAnswers[currentIndex] === false }">
+          <label class="quiz-option" :class="userAnswers[currentIndex] === false ? 'selected' : ''">
             <input type="radio" :name="'q' + currentIndex" :value="false" v-model="userAnswers[currentIndex]" />
             <span class="quiz-option-text">❌ 错误</span>
           </label>
@@ -92,13 +92,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useData } from 'vitepress'
 
 const props = defineProps({
   week: { type: String, required: true }
 })
-
-const { site } = useData()
 
 const questions = ref([])
 const currentIndex = ref(0)
@@ -144,8 +141,8 @@ function retry() {
 onMounted(async () => {
   try {
     const weekNum = String(props.week).padStart(2, '0')
-    const base = site.value.base || '/'
-    const resp = await fetch(`${base}quizzes/week${weekNum}.json`)
+    // 使用相对路径，适配任何部署环境
+    const resp = await fetch(`./quizzes/week${weekNum}.json`)
     if (!resp.ok) throw new Error('题目加载失败')
     const data = await resp.json()
     questions.value = data.questions || []
@@ -319,6 +316,9 @@ onMounted(async () => {
 .quiz-score-percent {
   font-size: 14px;
   color: var(--vp-c-text-2);
+}
+.quiz-review {
+  margin-top: 24px;
 }
 .quiz-review h4 {
   margin: 0 0 16px;
