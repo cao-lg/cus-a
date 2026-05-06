@@ -4,9 +4,8 @@ export default defineConfig({
   lang: 'zh-CN',
   title: '客户数据分析技术',
   description: 'AI时代高职课程 — 成为数据驱动的分析指挥官',
-  base: '/cus-a/',
   head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/cus-a/logo.svg' }]
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }]
   ],
 
   themeConfig: {
