@@ -1,2 +1,0 @@
-﻿test_id,test_name,variant_a,variant_b,traffic_split,start_date,end_date,a_sample_size,b_sample_size,a_conversion_rate,b_conversion_rate,a_avg_order_value,b_avg_order_value,a_roi,b_roi,winner
-AB001,优惠券方案对比测试,满200减50,满200减30+赠盲盒,50/50,2025-06-01,2025-06-07,5000,5000,0.03,0.08,215,238,1.2,2.8,B版

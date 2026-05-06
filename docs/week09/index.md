@@ -139,3 +139,10 @@ title: 第9周：精准营销与个性化推荐
 ::: tip 使用建议
 下载 CSV 文件后，可导入 Kimi/ChatGPT 进行 AI 辅助分析，或用 Excel/Power BI 进行可视化。
 :::
+
+
+---
+
+## ✍️ 课后练习
+
+<QuizWidget week="09" />
