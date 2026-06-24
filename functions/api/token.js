@@ -1,9 +1,6 @@
 /**
  * Coze OAuth JWT Token API - Cloudflare Pages Function
  * 路径: /api/token
- * 
- * 功能：用私钥签名 JWT，调用 Coze API 换取 Access Token
- * 部署：随 Cloudflare Pages 一起部署，同域名访问
  */
 
 const CONFIG = {
@@ -40,8 +37,14 @@ WIFglp0G1v/b2DhFu/L3tfTp/Q==
   COZE_API_BASE: 'https://api.coze.cn',
 };
 
+// 安全的 Base64URL 编码（处理 Unicode）
 function base64UrlEncode(str) {
-  const base64 = btoa(str);
+  const bytes = new TextEncoder().encode(str);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
@@ -51,7 +54,8 @@ function arrayBufferToBase64Url(buffer) {
   for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
-  return base64UrlEncode(binary);
+  const base64 = btoa(binary);
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 function parsePrivateKey(pem) {
@@ -59,6 +63,8 @@ function parsePrivateKey(pem) {
     .replace('-----BEGIN PRIVATE KEY-----', '')
     .replace('-----END PRIVATE KEY-----', '')
     .replace(/\s/g, '');
+  
+  // 使用 Uint8Array 解码 base64
   const binaryStr = atob(base64);
   const bytes = new Uint8Array(binaryStr.length);
   for (let i = 0; i < binaryStr.length; i++) {
@@ -78,6 +84,18 @@ async function importPrivateKey(pem) {
   );
 }
 
+// 生成随机 UUID（兼容所有环境）
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 async function signJWT(sessionName) {
   const now = Math.floor(Date.now() / 1000);
   const expireAt = now + 3600;
@@ -93,12 +111,15 @@ async function signJWT(sessionName) {
     aud: 'api.coze.cn',
     iat: now,
     exp: expireAt,
-    jti: crypto.randomUUID(),
+    jti: generateUUID(),
     session_name: sessionName,
   };
 
-  const encodedHeader = base64UrlEncode(JSON.stringify(header));
-  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+  const headerStr = JSON.stringify(header);
+  const payloadStr = JSON.stringify(payload);
+  
+  const encodedHeader = base64UrlEncode(headerStr);
+  const encodedPayload = base64UrlEncode(payloadStr);
   const signingInput = `${encodedHeader}.${encodedPayload}`;
 
   const privateKey = await importPrivateKey(CONFIG.PRIVATE_KEY_PEM);
@@ -136,7 +157,6 @@ export async function onRequest(context) {
   const { request } = context;
   const url = new URL(request.url);
 
-  // CORS 头 - 同域名不需要严格限制，但保留以防万一
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -159,6 +179,13 @@ export async function onRequest(context) {
     }
 
     const jwt = await signJWT(sessionName);
+    
+    // 验证 JWT 格式
+    const parts = jwt.split('.');
+    if (parts.length !== 3) {
+      throw new Error(`Invalid JWT format: ${parts.length} parts`);
+    }
+    
     const tokenData = await getCozeAccessToken(jwt);
 
     return new Response(
@@ -177,7 +204,11 @@ export async function onRequest(context) {
   } catch (error) {
     console.error('Token generation error:', error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ 
+        success: false, 
+        error: error.message,
+        stack: error.stack,
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
