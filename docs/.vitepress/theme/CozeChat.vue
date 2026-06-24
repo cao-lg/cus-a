@@ -204,7 +204,8 @@ function loadSDK() {
     }
 
     const script = document.createElement('script')
-    script.src = 'https://lf-cdn.coze.cn/obj/unpkg/flow-platform/chat-app-sdk/latest/libs/cn/index.js'
+    // 使用本地 SDK，避免 CDN 被墙
+    script.src = '/coze-chat-sdk.js'
     script.onload = () => resolve()
     script.onerror = () => reject(new Error('SDK 加载失败'))
     document.head.appendChild(script)
