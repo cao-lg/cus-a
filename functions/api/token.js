@@ -1,6 +1,6 @@
 /**
  * Coze OAuth JWT Token API - Cloudflare Pages Function
- * 路径: /api/token
+ * 参考 Python SDK 实现: https://github.com/coze-dev/coze-py
  */
 
 const CONFIG = {
@@ -33,11 +33,11 @@ gpoO5jucYmaXvZLW2cTXoCVGVQdxfPxXeE3dC/MDClbI/FfK0JGArvzU/1kKk5g+
 dgXFwBD6jce2wfce8iSGsSVP2zbdohcKfhgmr21gv3I+7kreqglMdXcFyWoVb7mr
 WIFglp0G1v/b2DhFu/L3tfTp/Q==
 -----END PRIVATE KEY-----`,
-  PUBLIC_KEY_ID: 'knZmhLMI6bDt7-qpD5LzmTFgVBYpjkH89IJjBs8NI8A',
+  PUBLIC_KEY_ID: 'ThobzNJTDzvx0z7Arjwwp1cumCkmxgi4GuMo5f_k9-4',
   COZE_API_BASE: 'https://api.coze.cn',
 };
 
-// 安全的 Base64URL 编码（处理 Unicode）
+// Base64URL 编码
 function base64UrlEncode(str) {
   const bytes = new TextEncoder().encode(str);
   let binary = '';
@@ -63,8 +63,6 @@ function parsePrivateKey(pem) {
     .replace('-----BEGIN PRIVATE KEY-----', '')
     .replace('-----END PRIVATE KEY-----', '')
     .replace(/\s/g, '');
-  
-  // 使用 Uint8Array 解码 base64
   const binaryStr = atob(base64);
   const bytes = new Uint8Array(binaryStr.length);
   for (let i = 0; i < binaryStr.length; i++) {
@@ -84,21 +82,19 @@ async function importPrivateKey(pem) {
   );
 }
 
-// 生成随机 UUID（兼容所有环境）
-function generateUUID() {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
+// 生成随机 hex 字符串
+function randomHex(length) {
+  const chars = '0123456789abcdef';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars[Math.floor(Math.random() * 16)];
   }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+  return result;
 }
 
 async function signJWT(sessionName) {
   const now = Math.floor(Date.now() / 1000);
-  const expireAt = now + 3600;
+  const ttl = 3600;
 
   const header = {
     alg: 'RS256',
@@ -106,18 +102,25 @@ async function signJWT(sessionName) {
     kid: CONFIG.PUBLIC_KEY_ID,
   };
 
+  // JTI 格式: timestamp:random_hex:random_hex (与 Python SDK 一致)
+  const jti = `${now}:${randomHex(8)}:${randomHex(16)}`;
+
   const payload = {
     iss: CONFIG.CLIENT_ID,
     aud: 'api.coze.cn',
     iat: now,
-    exp: expireAt,
-    jti: generateUUID(),
-    session_name: sessionName,
+    exp: now + ttl,
+    jti: jti,
   };
+
+  // 只在有 session_name 时添加
+  if (sessionName && sessionName !== 'anonymous') {
+    payload.session_name = sessionName;
+  }
 
   const headerStr = JSON.stringify(header);
   const payloadStr = JSON.stringify(payload);
-  
+
   const encodedHeader = base64UrlEncode(headerStr);
   const encodedPayload = base64UrlEncode(payloadStr);
   const signingInput = `${encodedHeader}.${encodedPayload}`;
@@ -133,16 +136,22 @@ async function signJWT(sessionName) {
   return `${signingInput}.${encodedSignature}`;
 }
 
-async function getCozeAccessToken(jwt) {
-  const response = await fetch(`${CONFIG.COZE_API_BASE}/api/permission/oauth2/token`, {
+// 按照 Python SDK 方式请求 Token
+async function getCozeAccessToken(jwt, ttl = 900) {
+  const url = `${CONFIG.COZE_API_BASE}/api/permission/oauth2/token`;
+
+  const body = {
+    duration_seconds: ttl,
+    grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+  };
+
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
     },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: jwt,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
@@ -179,13 +188,13 @@ export async function onRequest(context) {
     }
 
     const jwt = await signJWT(sessionName);
-    
+
     // 验证 JWT 格式
     const parts = jwt.split('.');
     if (parts.length !== 3) {
       throw new Error(`Invalid JWT format: ${parts.length} parts`);
     }
-    
+
     const tokenData = await getCozeAccessToken(jwt);
 
     return new Response(
@@ -204,8 +213,8 @@ export async function onRequest(context) {
   } catch (error) {
     console.error('Token generation error:', error);
     return new Response(
-      JSON.stringify({ 
-        success: false, 
+      JSON.stringify({
+        success: false,
         error: error.message,
         stack: error.stack,
       }),
