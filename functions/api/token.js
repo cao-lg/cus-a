@@ -36,7 +36,7 @@ gpoO5jucYmaXvZLW2cTXoCVGVQdxfPxXeE3dC/MDClbI/FfK0JGArvzU/1kKk5g+
 dgXFwBD6jce2wfce8iSGsSVP2zbdohcKfhgmr21gv3I+7kreqglMdXcFyWoVb7mr
 WIFglp0G1v/b2DhFu/L3tfTp/Q==
 -----END PRIVATE KEY-----`,
-  PUBLIC_KEY_ID: 'ThobzNJTDzvx0z7Arjwwp1cumCkmxgi4GuMo5f_k9-4',
+  PUBLIC_KEY_ID: 'knZmhLMI6bDt7-qpD5LzmTFgVBYpjkH89IJjBs8NI8A',
   COZE_API_BASE: 'https://api.coze.cn',
 };
 
