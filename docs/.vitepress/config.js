@@ -16,6 +16,7 @@ export default defineConfig({
       { text: '课程首页', link: '/' },
       { text: '课程大纲', link: '/syllabus' },
       { text: '📊 数据资源', link: '/data/' },
+      { text: '🤖 AI助手', link: '/ai-assistant/' },
       {
         text: '课程讲义',
         items: [
@@ -35,6 +36,10 @@ export default defineConfig({
       {
         text: '📊 数据资源',
         link: '/data/'
+      },
+      {
+        text: '🤖 AI助手',
+        link: '/ai-assistant/'
       },
       {
         text: '阶段一：数据基础',
