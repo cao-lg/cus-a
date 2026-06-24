@@ -12,8 +12,8 @@
         <p class="coze-login-tip">登录后，你的对话数据将用于学习画像分析</p>
       </div>
 
-      <!-- 加载状态 -->
-      <div v-if="loading" class="coze-loading">
+      <!-- 加载状态（登录前） -->
+      <div v-if="loading && !isLoggedIn" class="coze-loading">
         <div class="coze-loading-spinner"></div>
         <p>{{ loadingText }}</p>
       </div>
@@ -24,8 +24,8 @@
         <button @click="retry">重试</button>
       </div>
 
-      <!-- 已登录，显示聊天区域 -->
-      <div v-if="isLoggedIn && !loading && !error" ref="chatArea" style="width: 100%; height: 700px;"></div>
+      <!-- 已登录：聊天区域始终可见（SDK 需要真实 DOM 来挂载） -->
+      <div v-if="isLoggedIn" ref="chatArea" style="width: 100%; min-height: 700px;"></div>
     </div>
   </ClientOnly>
 </template>
@@ -59,9 +59,7 @@ function checkLoginStatus() {
 
   if (!token) return false
 
-  // 检查是否过期（提前5分钟刷新）
   if (expiresAt && Date.now() >= parseInt(expiresAt) - 5 * 60 * 1000) {
-    // Token 即将过期，尝试刷新
     refreshToken()
     return true
   }
@@ -71,19 +69,19 @@ function checkLoginStatus() {
 
 // ==================== 刷新 Token ====================
 async function refreshToken() {
-  const refreshToken = localStorage.getItem('coze_refresh_token')
-  if (!refreshToken) {
+  const storedRefreshToken = localStorage.getItem('coze_refresh_token')
+  if (!storedRefreshToken) {
     logout()
     return
   }
 
   try {
-    const response = await fetch(`${API_BASE}/token`, {
+    const response = await fetch(`${API_BASE}/exchange`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         grant_type: 'refresh_token',
-        refresh_token: refreshToken,
+        refresh_token: storedRefreshToken,
       }),
     })
 
@@ -103,7 +101,6 @@ async function refreshToken() {
 function saveToken(tokenData) {
   localStorage.setItem('coze_access_token', tokenData.access_token)
   localStorage.setItem('coze_refresh_token', tokenData.refresh_token)
-  // expires_in 是 Unix 时间戳（秒），转换为毫秒
   const expiresAt = tokenData.expires_in * 1000
   localStorage.setItem('coze_token_expires', expiresAt.toString())
 }
@@ -122,7 +119,6 @@ async function startOAuth() {
     oauthLoading.value = true
     error.value = null
 
-    // 1. 获取授权 URL
     const response = await fetch(`${API_BASE}/auth`)
     const data = await response.json()
 
@@ -133,10 +129,7 @@ async function startOAuth() {
     codeVerifier = data.code_verifier
     oauthState = data.state
 
-    // 2. 打开授权窗口
     oauthWindow = window.open(data.auth_url, 'coze-oauth', 'width=600,height=700')
-
-    // 3. 监听回调消息
     window.addEventListener('message', handleOAuthCallback)
 
   } catch (e) {
@@ -153,7 +146,6 @@ async function handleOAuthCallback(event) {
 
   const { code, state } = event.data
 
-  // 验证 state
   if (state !== oauthState) {
     error.value = '安全验证失败，请重试'
     oauthLoading.value = false
@@ -165,7 +157,6 @@ async function handleOAuthCallback(event) {
     loading.value = true
     oauthLoading.value = false
 
-    // 4. 用 code 换取 Token
     const response = await fetch(`${API_BASE}/exchange`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -181,11 +172,11 @@ async function handleOAuthCallback(event) {
       throw new Error(tokenData.error || '获取 Token 失败')
     }
 
-    // 5. 保存 Token
     saveToken(tokenData)
     isLoggedIn.value = true
 
-    // 6. 初始化聊天
+    // 等待 Vue 渲染聊天容器 DOM
+    await new Promise(resolve => setTimeout(resolve, 100))
     await initChat()
 
   } catch (e) {
@@ -204,7 +195,6 @@ function loadSDK() {
     }
 
     const script = document.createElement('script')
-    // 使用本地 SDK，避免 CDN 被墙
     script.src = '/coze-chat-sdk.js'
     script.onload = () => resolve()
     script.onerror = () => reject(new Error('SDK 加载失败'))
@@ -224,10 +214,14 @@ async function initChat() {
       throw new Error('未找到访问令牌')
     }
 
-    // 加载 SDK
     await loadSDK()
 
-    // 初始化 WebChatClient
+    // 确保 chatArea DOM 已渲染
+    const container = chatArea.value || document.getElementById('coze-chat-container')
+    if (!container) {
+      throw new Error('聊天容器未就绪')
+    }
+
     chatClient = new window.CozeWebSDK.WebChatClient({
       config: {
         type: 'bot',
@@ -280,11 +274,6 @@ async function initChat() {
     console.error('[CozeChat] Init error:', e)
     error.value = e.message
     loading.value = false
-
-    // 如果是 SDK 加载失败，提示用户
-    if (e.message.includes('SDK 加载失败')) {
-      error.value = 'SDK 加载失败，请检查网络连接后重试'
-    }
   }
 }
 
@@ -300,10 +289,10 @@ function retry() {
 onMounted(() => {
   if (typeof window === 'undefined') return
 
-  // 检查是否已登录
   if (checkLoginStatus()) {
     isLoggedIn.value = true
-    initChat()
+    // 等待 Vue 渲染聊天容器 DOM
+    setTimeout(() => initChat(), 100)
   }
 })
 

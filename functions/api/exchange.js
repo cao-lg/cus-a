@@ -1,7 +1,9 @@
 /**
- * Coze OAuth PKCE - Step 3: 用授权码换取 Token
+ * Coze OAuth PKCE - Token 交换 & 刷新
  * 路径: /api/exchange
- * 前端传入 code 和 code_verifier，后端调用 Coze API 换取 Access Token
+ * 支持两种模式：
+ *   1. authorization_code: 用授权码换取 Token
+ *   2. refresh_token: 用 refresh_token 刷新 Token
  */
 
 const CONFIG = {
@@ -30,28 +32,48 @@ export async function onRequest(context) {
 
   try {
     const body = await context.request.json();
-    const { code, code_verifier } = body;
+    const { grant_type } = body;
 
-    if (!code || !code_verifier) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Missing code or code_verifier' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    let requestBody;
 
-    // 调用 Coze API 换取 Token
-    const response = await fetch(CONFIG.COZE_TOKEN_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    if (grant_type === 'refresh_token') {
+      // 刷新 Token 模式
+      const { refresh_token } = body;
+      if (!refresh_token) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Missing refresh_token' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      requestBody = {
+        grant_type: 'refresh_token',
+        refresh_token: refresh_token,
+        client_id: CONFIG.CLIENT_ID,
+      };
+    } else {
+      // 授权码模式
+      const { code, code_verifier } = body;
+      if (!code || !code_verifier) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Missing code or code_verifier' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      requestBody = {
         grant_type: 'authorization_code',
         code: code,
         client_id: CONFIG.CLIENT_ID,
         redirect_uri: CONFIG.REDIRECT_URI,
         code_verifier: code_verifier,
-      }),
+      };
+    }
+
+    const response = await fetch(CONFIG.COZE_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
     });
 
     const tokenData = await response.json();
