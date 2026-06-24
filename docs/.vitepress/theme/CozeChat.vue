@@ -51,6 +51,7 @@ let chatClient = null
 let oauthWindow = null
 let codeVerifier = ''
 let oauthState = ''
+let pollInterval = null
 
 // ==================== 检查登录状态 ====================
 function checkLoginStatus() {
@@ -129,8 +130,13 @@ async function startOAuth() {
     codeVerifier = data.code_verifier
     oauthState = data.state
 
-    oauthWindow = window.open(data.auth_url, 'coze-oauth', 'width=600,height=700')
-    window.addEventListener('message', handleOAuthCallback)
+    // 使用当前窗口跳转（避免弹窗被拦截）
+    // 保存 state 到 sessionStorage，用于回调后验证
+    sessionStorage.setItem('coze_oauth_state', oauthState)
+    sessionStorage.setItem('coze_code_verifier', codeVerifier)
+    
+    // 跳转到 Coze 授权页
+    window.location.href = data.auth_url
 
   } catch (e) {
     error.value = e.message
@@ -138,19 +144,35 @@ async function startOAuth() {
   }
 }
 
-// ==================== 处理 OAuth 回调 ====================
-async function handleOAuthCallback(event) {
-  if (event.data?.type !== 'coze-oauth-callback') return
+// ==================== 处理 OAuth 回调（从 URL 参数获取 code） ====================
+async function handleOAuthReturn() {
+  const url = new URL(window.location.href)
+  const code = url.searchParams.get('code')
+  const state = url.searchParams.get('state')
+  const errorParam = url.searchParams.get('error')
 
-  window.removeEventListener('message', handleOAuthCallback)
+  // 清除 URL 参数
+  if (code || errorParam) {
+    window.history.replaceState({}, document.title, window.location.pathname)
+  }
 
-  const { code, state } = event.data
+  if (errorParam) {
+    error.value = '授权失败：' + (url.searchParams.get('error_description') || errorParam)
+    oauthLoading.value = false
+    return
+  }
 
-  if (state !== oauthState) {
+  if (!code) return
+
+  // 验证 state
+  const savedState = sessionStorage.getItem('coze_oauth_state')
+  if (state !== savedState) {
     error.value = '安全验证失败，请重试'
     oauthLoading.value = false
     return
   }
+
+  const savedCodeVerifier = sessionStorage.getItem('coze_code_verifier')
 
   try {
     loadingText.value = '正在获取访问令牌...'
@@ -162,7 +184,7 @@ async function handleOAuthCallback(event) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         code: code,
-        code_verifier: codeVerifier,
+        code_verifier: savedCodeVerifier,
       }),
     })
 
@@ -174,6 +196,10 @@ async function handleOAuthCallback(event) {
 
     saveToken(tokenData)
     isLoggedIn.value = true
+
+    // 清除 sessionStorage
+    sessionStorage.removeItem('coze_oauth_state')
+    sessionStorage.removeItem('coze_code_verifier')
 
     // 等待 Vue 渲染聊天容器 DOM
     await new Promise(resolve => setTimeout(resolve, 100))
@@ -289,15 +315,21 @@ function retry() {
 onMounted(() => {
   if (typeof window === 'undefined') return
 
+  // 检查是否是从 Coze 授权回调回来的
+  const url = new URL(window.location.href)
+  if (url.searchParams.get('code') || url.searchParams.get('error')) {
+    handleOAuthReturn()
+    return
+  }
+
+  // 正常加载：检查是否已登录
   if (checkLoginStatus()) {
     isLoggedIn.value = true
-    // 等待 Vue 渲染聊天容器 DOM
     setTimeout(() => initChat(), 100)
   }
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('message', handleOAuthCallback)
   if (chatClient) {
     chatClient = null
   }
