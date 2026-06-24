@@ -70,16 +70,26 @@ export async function onRequest(context) {
       };
     }
 
+    console.log('Coze token request:', JSON.stringify(requestBody));
+
     const response = await fetch(CONFIG.COZE_TOKEN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
     });
 
-    const tokenData = await response.json();
+    const responseText = await response.text();
+    console.log('Coze token response:', response.status, responseText);
+
+    let tokenData;
+    try {
+      tokenData = JSON.parse(responseText);
+    } catch (e) {
+      tokenData = { error: responseText };
+    }
 
     if (!response.ok) {
-      throw new Error(tokenData.error_description || tokenData.error || `HTTP ${response.status}`);
+      throw new Error(tokenData.error_description || tokenData.error || `HTTP ${response.status}: ${responseText}`);
     }
 
     return new Response(
