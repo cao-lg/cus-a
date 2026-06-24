@@ -8,7 +8,7 @@
 
 const CONFIG = {
   CLIENT_ID: '08132108551868645245976669353120.app.coze',
-  REDIRECT_URI: 'https://cus-a.pages.dev/api/callback',
+  REDIRECT_URI: 'https://cus-a.pages.dev/ai-assistant/',
   COZE_TOKEN_URL: 'https://api.coze.cn/api/permission/oauth2/token',
 };
 
