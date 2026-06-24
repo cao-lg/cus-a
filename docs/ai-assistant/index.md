@@ -15,16 +15,7 @@ title: AI 学习助手
 直接在下方输入框中输入你的问题，小数老师会为你解答。建议提问时说明具体周次或知识点，以获得更精准的回答。
 :::
 
-<div style="width: 100%; height: 700px; border-radius: 12px; overflow: hidden; border: 1px solid var(--vp-c-divider);">
-  <iframe
-    src="https://www.coze.cn/s/UBIvPa89h2I/"
-    width="100%"
-    height="700"
-    frameborder="0"
-    allow="microphone"
-    style="border: none;"
-  ></iframe>
-</div>
+<CozeChat />
 
 ::: warning 注意
 AI 助手由 Coze 平台提供技术支持，回答内容仅供参考学习使用，请以课程讲义和教师课堂讲解为准。
