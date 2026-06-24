@@ -1,0 +1,32 @@
+export class Logger {
+    constructor(prefix = "", level = "release") {
+        this.prefix = prefix;
+        this.level = level;
+    }
+    setLoglevel(level) {
+        if (!level) {
+            return;
+        }
+        this.level = level;
+    }
+    isDebug() {
+        return this.level === "debug";
+    }
+    debug(...args) {
+        if (this.level !== "debug") {
+            return;
+        }
+        console.log(this.prefix, "[debug]", ...args, "\n");
+    }
+    info(...args) {
+        console.info(this.prefix, "[info]", ...args, "\n");
+    }
+    warn(...args) {
+        console.warn(this.prefix, "[warn]", ...args, "\n");
+    }
+    error(...args) {
+        console.error(this.prefix, "[error]", ...args, "\n");
+    }
+}
+export const logger = new Logger("[coze-mini-sdk]");
+//# sourceMappingURL=logger.js.map

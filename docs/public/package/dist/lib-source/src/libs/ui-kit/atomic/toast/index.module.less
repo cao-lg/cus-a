@@ -1,0 +1,19 @@
+.container {
+  display: inline-flex;
+  box-sizing: border-box;
+  padding: 12px 8px;
+  max-width: 80%;
+  width: fit-content;;
+  background-color: var(--chat-bg-color-default, #FFF);
+  border-radius: 6px;
+  box-shadow: var(--chat-box-shadow-1, rgba(0, 0, 0, 0.3)) 0px 0px 1px 0px, var(--chat-box-shadow-2, rgba(0, 0, 0, 0.1)) 0px 4px 14px 0px;
+
+  .content {
+    flex: 1;
+    overflow: hidden;
+  }
+  .icon {
+    width: 20px;
+    height: 20px;
+  }
+}

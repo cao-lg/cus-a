@@ -1,0 +1,16 @@
+export var Region;
+(function (Region) {
+    Region["OVERSEA"] = "oversea";
+    Region["CN"] = "cn";
+})(Region || (Region = {}));
+;
+export const getRegionApi = (region) => {
+    switch (region) {
+        case 'oversea':
+            return 'https://api.coze.com';
+        default: {
+            return 'https://api.coze.cn';
+        }
+    }
+};
+//# sourceMappingURL=env.js.map

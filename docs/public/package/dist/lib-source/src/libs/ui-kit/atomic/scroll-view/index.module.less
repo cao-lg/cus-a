@@ -1,0 +1,33 @@
+.container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+
+  .arrow-down {
+    position: absolute;
+    right: 0px;
+    bottom: 32px;
+  }
+}
+
+.scroll {
+  height: 100%;
+  width: 100%;
+  overflow: auto;
+  transform: rotateY(180deg) rotateZ(180deg);
+  padding: 2px 0 0;
+
+  scrollbar-width: none;
+
+  .children {
+    min-height: 100%;
+    overflow: hidden;
+    transform: rotateY(-180deg) rotateZ(-180deg);
+  }
+
+  ::-webkit-scrollbar {
+    width: 0;
+  }
+
+
+}

@@ -1,0 +1,20 @@
+export default {
+    noAnswer: "No answer",
+    chatFooterTip: "Answer is generating by AI.",
+    sendFailed: "Send Failed",
+    chatInputPlaceholder: "Send Message",
+    retryBtn: "retry",
+    messageListLoading: "loading...",
+    chooseImage: "picture",
+    chooseCamera: "camera",
+    chooseImageError: "upload failed",
+    messageTypeUnSupport: "The message is not unsupported.",
+    defaultHeaderTitle: "Coze Bot",
+    copyCode: "Copy",
+    copySuccess: "Copy success",
+    copyFailed: "Copy failed",
+    clearContextDivide: "Context cleared",
+    clearContextFailed: "Clear context failed",
+    clearMessageFailed: "Clear message failed",
+};
+//# sourceMappingURL=en.js.map

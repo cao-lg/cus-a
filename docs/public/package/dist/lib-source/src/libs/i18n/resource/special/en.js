@@ -1,0 +1,8 @@
+import { Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-runtime";
+const resource = {
+    chatInitRetry: (options) => _jsxs(_Fragment, { children: ["Start error,", options === null || options === void 0 ? void 0 : options.retry] }),
+    messageListRetry: (options) => (_jsxs(_Fragment, { children: ["Get message history error,", options === null || options === void 0 ? void 0 : options.retry] })),
+    copyLinkSuccess: (options) => `Copy link: ${options === null || options === void 0 ? void 0 : options.url}`,
+};
+export default resource;
+//# sourceMappingURL=en.js.map

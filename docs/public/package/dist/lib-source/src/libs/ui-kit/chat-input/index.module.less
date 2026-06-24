@@ -1,0 +1,33 @@
+
+.container {
+  flex: 1;
+
+  .input-container {
+    flex: 1;
+    border-radius: 24px;
+    backdrop-filter: blur(37.5px);
+    border: 1px solid var(--chat-bg-border-color-default, rgba(6, 7, 9, 0.1));
+    padding: 8px 12px 8px 20px;
+    align-items: center;
+    overflow: hidden;
+
+    .input {
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
+      flex: 1;
+    }
+    .placeholder {
+      font-weight: 500;
+      color: rgba(6, 7, 9, 0.3)
+    }
+    .divider {
+      height: 13px;
+      border-left: 1px solid var(--chat-bg-border-color-light, rgba(28, 31, 35, 0.08));
+      margin: 0 12px;
+    }
+    &.focused{
+      border-color: var(--chat-bg-border-color-hglt, rgba(78, 64, 229));
+    }
+  }
+}

@@ -1,0 +1,7 @@
+import { jsx as _jsx } from "react/jsx-runtime";
+import { View } from '@tarojs/components';
+import { Phrase } from '../../phrase';
+export const Paragraph = ({ node }) => {
+    return (_jsx(View, { children: node.children.map((item, index) => (_jsx(Phrase, { node: item }, index))) }));
+};
+//# sourceMappingURL=index.js.map

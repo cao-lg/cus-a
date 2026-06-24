@@ -1,0 +1,20 @@
+declare const _default: {
+    noAnswer: string;
+    chatFooterTip: string;
+    sendFailed: string;
+    chatInputPlaceholder: string;
+    retryBtn: string;
+    messageListLoading: string;
+    chooseImage: string;
+    chooseCamera: string;
+    chooseImageError: string;
+    messageTypeUnSupport: string;
+    defaultHeaderTitle: string;
+    copyCode: string;
+    copySuccess: string;
+    copyFailed: string;
+    clearContextDivide: string;
+    clearContextFailed: string;
+    clearMessageFailed: string;
+};
+export default _default;

@@ -1,0 +1,8 @@
+import { jsx as _jsx } from "react/jsx-runtime";
+import { Spacing } from "../atomic/spacing";
+import { BubbleText } from "../atomic/bubble-text";
+import styles from "./index.module.less";
+export const SuggestionList = ({ suggestions, onClickSuggestion, }) => (_jsx(Spacing, Object.assign({ gap: 8, vertical: true }, { children: suggestions.slice(0, 3).map((item, index) => (_jsx(BubbleText, { className: styles.suggestion, text: item, canClick: true, onClick: () => {
+            onClickSuggestion === null || onClickSuggestion === void 0 ? void 0 : onClickSuggestion(item);
+        } }, index))) })));
+//# sourceMappingURL=index.js.map

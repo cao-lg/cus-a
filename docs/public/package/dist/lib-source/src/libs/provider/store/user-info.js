@@ -1,0 +1,28 @@
+import { create } from "zustand";
+import { logger, nanoid } from "../../utils";
+import { useChatPropsContext } from "../context";
+import { useMemo } from "react";
+import { useUpdateEffect } from "../../hooks";
+const createUserInfoStore = ({ user }) => {
+    const defaultInfo = {
+        id: (user === null || user === void 0 ? void 0 : user.id) || nanoid(),
+    };
+    return create()((set) => ({
+        info: Object.assign(Object.assign({}, defaultInfo), user),
+        setUserInfo: (info) => {
+            set({
+                info: Object.assign(Object.assign({}, defaultInfo), (info || {})),
+            });
+        },
+    }));
+};
+export const useCreateUserInfoStore = () => {
+    const chatProps = useChatPropsContext();
+    const userInfoStore = useMemo(() => createUserInfoStore({ user: chatProps === null || chatProps === void 0 ? void 0 : chatProps.user }), []);
+    useUpdateEffect(() => {
+        userInfoStore.getState().setUserInfo(chatProps.user);
+        logger.debug("useCreateUserInfoStore in userUpdateEffect", chatProps.user);
+    }, [chatProps]);
+    return userInfoStore;
+};
+//# sourceMappingURL=user-info.js.map

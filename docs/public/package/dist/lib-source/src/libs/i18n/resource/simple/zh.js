@@ -1,0 +1,20 @@
+export default {
+    noAnswer: "没有回答",
+    chatFooterTip: "内容由 AI 生成，无法确保真实准确，仅供参考",
+    sendFailed: "发送失败",
+    chatInputPlaceholder: "发送消息",
+    retryBtn: "重试",
+    messageListLoading: "加载中...",
+    chooseImage: "照片",
+    chooseCamera: "拍照",
+    chooseImageError: "上传失败",
+    messageTypeUnSupport: "不支持支持该消息格式",
+    defaultHeaderTitle: "扣子智能体",
+    copyCode: "复制",
+    copySuccess: "复制成功",
+    copyFailed: "复制失败",
+    clearContextDivide: "清空上下文",
+    clearContextFailed: "清空上下文失败",
+    clearMessageFailed: "清空消息失败",
+};
+//# sourceMappingURL=zh.js.map

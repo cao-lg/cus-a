@@ -1,0 +1,11 @@
+import type { II18n, Language } from "../utils/i18n";
+import { type IChatService, type ChatServiceProps } from "../services/chat-service";
+export type LogLevel = "debug" | "release";
+export interface SettingInfo {
+    apiBaseUrl: string;
+    onGetCustomChatService?: (props: ChatServiceProps) => IChatService;
+    i18n?: II18n;
+    language?: Language;
+    requestHeader?: Record<string, string>;
+    logLevel?: LogLevel;
+}

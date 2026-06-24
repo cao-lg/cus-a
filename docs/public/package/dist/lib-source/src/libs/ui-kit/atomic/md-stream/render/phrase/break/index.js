@@ -1,0 +1,7 @@
+import { jsx as _jsx } from "react/jsx-runtime";
+import { View } from '@tarojs/components';
+import styles from './index.module.less';
+export const Break = () => {
+    return _jsx(View, { className: styles.break });
+};
+//# sourceMappingURL=index.js.map

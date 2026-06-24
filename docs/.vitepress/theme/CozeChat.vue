@@ -2,15 +2,21 @@
   <ClientOnly>
     <div id="coze-chat-container" style="width: 100%; min-height: 700px;">
       <!-- 加载状态 -->
-      <div v-if="loading" class="coze-loading">
+      <div v-if="loading && !useIframe" class="coze-loading">
         <div class="coze-loading-spinner"></div>
         <p>正在连接 AI 助手...</p>
       </div>
-      <!-- 错误状态 -->
-      <div v-if="error" class="coze-error">
-        <p>连接失败：{{ error }}</p>
-        <button @click="retry">重试</button>
+      <!-- SDK 错误状态，提供 iframe 降级 -->
+      <div v-if="error && !useIframe" class="coze-error">
+        <p>SDK 加载失败，正在切换为嵌入模式...</p>
       </div>
+      <!-- iframe 嵌入模式 -->
+      <iframe
+        v-if="useIframe"
+        :src="iframeUrl"
+        style="width: 100%; height: 700px; border: none; border-radius: 8px;"
+        allow="microphone"
+      ></iframe>
     </div>
   </ClientOnly>
 </template>
@@ -19,19 +25,18 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 
 // ==================== 配置区 ====================
-// OAuth Token 服务地址 - 使用同域名 Pages Function
-// 本地开发时自动切换到 localhost，生产环境使用相对路径
 const OAUTH_SERVICE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-  ? 'http://localhost:8788/api'  // Wrangler pages dev 端口
-  : '/api'  // 生产环境同域名
+  ? 'http://localhost:8788/api'
+  : '/api'
 
-// 学生身份标识（实际应用中可以从登录系统获取）
-// 每个学生使用不同的标识，实现会话隔离和独立计费
+// Coze 智能体配置
+const BOT_ID = '7629158444695699498'
+const COZE_STORE_URL = 'https://www.coze.cn/s/UBIvPa89h2I'
+
+// 学生身份标识
 const getUserId = () => {
-  // 尝试从 localStorage 获取已保存的用户标识
   let userId = localStorage.getItem('coze_user_id')
   if (!userId) {
-    // 生成匿名标识（基于时间戳+随机数）
     userId = 'student_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
     localStorage.setItem('coze_user_id', userId)
   }
@@ -41,7 +46,8 @@ const getUserId = () => {
 // ==================== 状态 ====================
 const loading = ref(true)
 const error = ref(null)
-let sdkLoaded = false
+const useIframe = ref(false)
+const iframeUrl = ref(COZE_STORE_URL)
 let chatClient = null
 
 // ==================== 获取 OAuth Token ====================
@@ -49,9 +55,7 @@ async function fetchOAuthToken() {
   const userId = getUserId()
   const response = await fetch(`${OAUTH_SERVICE_URL}/token?user=${encodeURIComponent(userId)}`, {
     method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
   })
 
   if (!response.ok) {
@@ -87,93 +91,102 @@ function loadSDK() {
   })
 }
 
-// ==================== 初始化聊天组件 ====================
+// ==================== 初始化 WebChatClient ====================
+async function initWebChatClient() {
+  const tokenData = await fetchOAuthToken()
+  console.log('[CozeChat] Token obtained for session:', tokenData.sessionName)
+
+  await loadSDK()
+
+  const userId = getUserId()
+  chatClient = new window.CozeWebSDK.WebChatClient({
+    config: {
+      type: 'bot',
+      bot_id: BOT_ID,
+      isIframe: true,
+    },
+    auth: {
+      type: 'token',
+      token: tokenData.accessToken,
+      onRefreshToken: async () => {
+        console.log('[CozeChat] Refreshing token...')
+        const newToken = await fetchOAuthToken()
+        return newToken.accessToken
+      },
+    },
+    userInfo: {
+      id: userId,
+      url: 'https://lf-coze-web-cdn.coze.cn/obj/eden-cn/lm-lgvj/ljhwZthlaukjlkulzlp/coze/coze-logo.png',
+      nickname: '学生用户',
+    },
+    ui: {
+      base: {
+        icon: 'https://lf-coze-web-cdn.coze.cn/obj/eden-cn/lm-lgvj/ljhwZthlaukjlkulzlp/coze/chatsdk-logo.png',
+        layout: 'pc',
+        lang: 'zh-CN',
+        zIndex: 1000,
+      },
+      header: {
+        isShow: true,
+        isNeedClose: false,
+      },
+      asstBtn: {
+        isNeed: false,
+      },
+      footer: {
+        isShow: false,
+      },
+      chatBot: {
+        title: '小数老师',
+        uploadable: true,
+        width: '100%',
+      },
+    },
+  })
+
+  console.log('[CozeChat] WebChatClient initialized successfully')
+  loading.value = false
+}
+
+// ==================== 降级到 iframe ====================
+function fallbackToIframe() {
+  console.log('[CozeChat] Falling back to iframe mode')
+  useIframe.value = true
+  loading.value = false
+  error.value = null
+}
+
+// ==================== 主初始化逻辑 ====================
 async function initChat() {
   try {
     loading.value = true
     error.value = null
+    useIframe.value = false
 
-    // 1. 获取 OAuth Token
-    const tokenData = await fetchOAuthToken()
-    console.log('[CozeChat] Token obtained for session:', tokenData.sessionName)
-
-    // 2. 加载 SDK
-    await loadSDK()
-
-    // 3. 初始化 WebChatClient
-    const userId = getUserId()
-    chatClient = new window.CozeWebSDK.WebChatClient({
-      config: {
-        type: 'bot',
-        bot_id: '7629158444695699498',
-        isIframe: true,
-      },
-      auth: {
-        type: 'token',
-        token: tokenData.accessToken,
-        // Token 刷新回调（当 Token 过期时自动调用）
-        onRefreshToken: async () => {
-          console.log('[CozeChat] Refreshing token...')
-          const newToken = await fetchOAuthToken()
-          return newToken.accessToken
-        },
-      },
-      userInfo: {
-        id: userId,
-        url: 'https://lf-coze-web-cdn.coze.cn/obj/eden-cn/lm-lgvj/ljhwZthlaukjlkulzlp/coze/coze-logo.png',
-        nickname: '学生用户',
-      },
-      ui: {
-        base: {
-          icon: 'https://lf-coze-web-cdn.coze.cn/obj/eden-cn/lm-lgvj/ljhwZthlaukjlkulzlp/coze/chatsdk-logo.png',
-          layout: 'pc',
-          lang: 'zh-CN',
-          zIndex: 1000,
-        },
-        header: {
-          isShow: true,
-          isNeedClose: false,
-        },
-        asstBtn: {
-          isNeed: false,
-        },
-        footer: {
-          isShow: false,
-        },
-        chatBot: {
-          title: '小数老师',
-          uploadable: true,
-          width: '100%',
-        },
-      },
-    })
-
-    console.log('[CozeChat] Initialized successfully')
-    loading.value = false
-
+    // 先尝试 WebChatClient SDK 模式
+    await initWebChatClient()
   } catch (e) {
-    console.error('[CozeChat] Init error:', e)
-    error.value = e.message
-    loading.value = false
-  }
-}
+    console.error('[CozeChat] SDK mode failed:', e)
 
-// ==================== 重试 ====================
-function retry() {
-  initChat()
+    // 如果是 SDK 加载失败，降级到 iframe
+    if (e.message.includes('SDK 加载失败')) {
+      fallbackToIframe()
+    } else {
+      // 其他错误（如 Token 获取失败）
+      error.value = e.message
+      loading.value = false
+    }
+  }
 }
 
 // ==================== 生命周期 ====================
 onMounted(() => {
   if (typeof window === 'undefined') return
-  // 延迟加载确保 DOM 就绪
   setTimeout(initChat, 500)
 })
 
 onBeforeUnmount(() => {
-  sdkLoaded = false
   if (chatClient) {
-    // 清理聊天组件（如果 SDK 支持）
     chatClient = null
   }
 })

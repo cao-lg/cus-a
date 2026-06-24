@@ -1,0 +1,4 @@
+import { FC } from "react";
+export declare const FileMessage: FC<{
+    filename: string;
+}>;

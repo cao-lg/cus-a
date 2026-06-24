@@ -1,0 +1,46 @@
+@keyframes waiting {
+  0% {
+    background-color: #FFF;
+  }
+  50% {
+    background-color: currentColor;
+  }
+  100% {
+    background-color: #FFF;
+  }
+}
+.container {
+
+  margin: 7px 18px;
+  overflow: visible !important;
+  position: relative;
+
+  &,
+  &::before,
+  &:after{
+    background-color: currentColor;
+    border-radius: 4px;
+    color: currentColor;
+    height: 8px;
+    width: 8px;
+
+    animation: waiting.8s infinite alternate;
+    animation-timing-function: ease;
+  }
+
+  &::before {
+    animation-delay: -.4s;
+    left: -15px;
+  }
+  &::after {
+    left: 15px;
+    animation-delay: +.4s;
+  }
+  &::before, &::after {
+    content: "";
+    display: inline-block;
+    position: absolute;
+    top: 0;
+  }
+}
+

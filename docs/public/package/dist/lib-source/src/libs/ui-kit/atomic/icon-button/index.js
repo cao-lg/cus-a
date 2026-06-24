@@ -1,0 +1,10 @@
+import { jsx as _jsx } from "react/jsx-runtime";
+import cls from "classnames";
+import { CenterAlignedBox } from "../..";
+import styles from "./index.module.less";
+export const IconButton = ({ type = "circle-btn", children, onClick, className, size = "medium", }) => {
+    return (_jsx(CenterAlignedBox, Object.assign({ onClick: () => {
+            onClick === null || onClick === void 0 ? void 0 : onClick();
+        }, className: cls(styles["container"], className, [styles[type]], [styles[size]]) }, { children: children })));
+};
+//# sourceMappingURL=index.js.map
