@@ -41,7 +41,7 @@ title: AI 学习助手
 登录后，点击以下链接即可开始使用：
 
 <div style="text-align:center; margin: 2rem 0;">
-  <a href="https://www.coze.cn/bot/7629158444695699498" target="_blank" rel="noopener" style="display:inline-block; background: #4f46e5; color: #fff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 1.1rem;">
+  <a href="https://www.coze.cn/store/agent/7629158444695699498?bot_id=true" target="_blank" rel="noopener" style="display:inline-block; background: #4f46e5; color: #fff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 1.1rem;">
     打开"小数老师"（需登录 Coze）
   </a>
 </div>
