@@ -75,7 +75,8 @@ function loadSDK() {
     }
 
     const script = document.createElement('script')
-    script.src = '/coze-chat-sdk.js'
+    // 使用中国区域 CDN，让 webpack 自动从同目录加载 chunk 文件（如 499.js）
+    script.src = 'https://lf-cdn.coze.cn/obj/unpkg/flow-platform/chat-app-sdk/1.2.0-beta.20/libs/cn/index.js'
     script.onload = () => resolve()
     script.onerror = () => reject(new Error('SDK 加载失败'))
     document.head.appendChild(script)
