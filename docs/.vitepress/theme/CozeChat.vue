@@ -145,6 +145,10 @@ async function initChat() {
       },
     })
 
+    // 自动展开聊天窗口
+    if (chatClient && typeof chatClient.showChatBot === 'function') {
+      chatClient.showChatBot()
+    }
     console.log('[CozeChat] Initialized successfully')
     loading.value = false
 
