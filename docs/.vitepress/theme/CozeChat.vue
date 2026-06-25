@@ -1,31 +1,16 @@
 <template>
   <ClientOnly>
     <div id="coze-chat-container" style="width: 100%; min-height: 700px;">
-      <!-- 未登录状态 -->
-      <div v-if="!isLoggedIn && !loading" class="coze-login">
-        <div class="coze-login-icon">🤖</div>
-        <h3>AI 学习助手</h3>
-        <p>请先登录你的 Coze 账号，即可与"小数老师"对话</p>
-        <button class="coze-login-btn" @click="startOAuth" :disabled="oauthLoading">
-          {{ oauthLoading ? '正在跳转...' : '登录 Coze 账号' }}
-        </button>
-        <p class="coze-login-tip">登录后，你的对话数据将用于学习画像分析</p>
-      </div>
-
-      <!-- 加载状态（登录前） -->
-      <div v-if="loading && !isLoggedIn" class="coze-loading">
+      <!-- 加载状态 -->
+      <div v-if="loading" class="coze-loading">
         <div class="coze-loading-spinner"></div>
         <p>{{ loadingText }}</p>
       </div>
-
       <!-- 错误状态 -->
       <div v-if="error && !loading" class="coze-error">
         <p>{{ error }}</p>
-        <button @click="retry">重试</button>
+        <button @click="initChat">重试</button>
       </div>
-
-      <!-- 已登录：聊天区域始终可见（SDK 需要真实 DOM 来挂载） -->
-      <div v-if="isLoggedIn" ref="chatArea" style="width: 100%; min-height: 700px;"></div>
     </div>
   </ClientOnly>
 </template>
@@ -40,175 +25,44 @@ const API_BASE = typeof window !== 'undefined' && window.location.hostname === '
 
 const BOT_ID = '7629158444695699498'
 
+// 学生身份标识（用于 session_name 隔离）
+const getUserId = () => {
+  let userId = localStorage.getItem('coze_student_id')
+  if (!userId) {
+    userId = 'student_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+    localStorage.setItem('coze_student_id', userId)
+  }
+  return userId
+}
+
 // ==================== 状态 ====================
-const loading = ref(false)
-const loadingText = ref('加载中...')
+const loading = ref(true)
+const loadingText = ref('正在连接 AI 助手...')
 const error = ref(null)
-const isLoggedIn = ref(false)
-const oauthLoading = ref(false)
-const chatArea = ref(null)
 let chatClient = null
-let oauthWindow = null
-let codeVerifier = ''
-let oauthState = ''
-let pollInterval = null
 
-// ==================== 检查登录状态 ====================
-function checkLoginStatus() {
-  const token = localStorage.getItem('coze_access_token')
-  const expiresAt = localStorage.getItem('coze_token_expires')
+// ==================== 获取 Token ====================
+async function fetchToken() {
+  const userId = getUserId()
+  const response = await fetch(`${API_BASE}/token?user=${encodeURIComponent(userId)}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  })
 
-  if (!token) return false
-
-  if (expiresAt && Date.now() >= parseInt(expiresAt) - 5 * 60 * 1000) {
-    refreshToken()
-    return true
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}))
+    throw new Error(errData.error || `HTTP ${response.status}`)
   }
 
-  return true
-}
-
-// ==================== 刷新 Token ====================
-async function refreshToken() {
-  const storedRefreshToken = localStorage.getItem('coze_refresh_token')
-  if (!storedRefreshToken) {
-    logout()
-    return
+  const data = await response.json()
+  if (!data.success) {
+    throw new Error(data.error || '获取 Token 失败')
   }
 
-  try {
-    const response = await fetch(`${API_BASE}/exchange`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        grant_type: 'refresh_token',
-        refresh_token: storedRefreshToken,
-      }),
-    })
-
-    const data = await response.json()
-    if (data.success) {
-      saveToken(data)
-    } else {
-      logout()
-    }
-  } catch (e) {
-    console.error('Refresh token failed:', e)
-    logout()
-  }
-}
-
-// ==================== 保存 Token ====================
-function saveToken(tokenData) {
-  localStorage.setItem('coze_access_token', tokenData.access_token)
-  localStorage.setItem('coze_refresh_token', tokenData.refresh_token)
-  const expiresAt = tokenData.expires_in * 1000
-  localStorage.setItem('coze_token_expires', expiresAt.toString())
-}
-
-// ==================== 清除登录状态 ====================
-function logout() {
-  localStorage.removeItem('coze_access_token')
-  localStorage.removeItem('coze_refresh_token')
-  localStorage.removeItem('coze_token_expires')
-  isLoggedIn.value = false
-}
-
-// ==================== 开始 OAuth 流程 ====================
-async function startOAuth() {
-  try {
-    oauthLoading.value = true
-    error.value = null
-
-    const response = await fetch(`${API_BASE}/auth`)
-    const data = await response.json()
-
-    if (!data.success) {
-      throw new Error(data.error || '获取授权链接失败')
-    }
-
-    codeVerifier = data.code_verifier
-    oauthState = data.state
-
-    // 使用当前窗口跳转（避免弹窗被拦截）
-    // 保存 state 到 sessionStorage，用于回调后验证
-    sessionStorage.setItem('coze_oauth_state', oauthState)
-    sessionStorage.setItem('coze_code_verifier', codeVerifier)
-    
-    // 跳转到 Coze 授权页
-    window.location.href = data.auth_url
-
-  } catch (e) {
-    error.value = e.message
-    oauthLoading.value = false
-  }
-}
-
-// ==================== 处理 OAuth 回调（从 URL 参数获取 code） ====================
-async function handleOAuthReturn() {
-  const url = new URL(window.location.href)
-  const code = url.searchParams.get('code')
-  const state = url.searchParams.get('state')
-  const errorParam = url.searchParams.get('error')
-
-  // 清除 URL 参数
-  if (code || errorParam) {
-    window.history.replaceState({}, document.title, window.location.pathname)
-  }
-
-  if (errorParam) {
-    error.value = '授权失败：' + (url.searchParams.get('error_description') || errorParam)
-    oauthLoading.value = false
-    return
-  }
-
-  if (!code) return
-
-  // 验证 state
-  const savedState = sessionStorage.getItem('coze_oauth_state')
-  if (state !== savedState) {
-    error.value = '安全验证失败，请重试'
-    oauthLoading.value = false
-    return
-  }
-
-  const savedCodeVerifier = sessionStorage.getItem('coze_code_verifier')
-
-  try {
-    loadingText.value = '正在获取访问令牌...'
-    loading.value = true
-    oauthLoading.value = false
-
-    const response = await fetch(`${API_BASE}/exchange`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        code: code,
-        code_verifier: savedCodeVerifier,
-      }),
-    })
-
-    const tokenData = await response.json()
-
-    if (!tokenData.success) {
-      throw new Error(tokenData.error || '获取 Token 失败')
-    }
-
-    saveToken(tokenData)
-    isLoggedIn.value = true
-
-    // 清除 sessionStorage
-    sessionStorage.removeItem('coze_oauth_state')
-    sessionStorage.removeItem('coze_code_verifier')
-
-    // 等待 Vue 渲染聊天容器 DOM
-    await new Promise(resolve => setTimeout(resolve, 100))
-    await initChat()
-
-  } catch (e) {
-    error.value = e.message
-    loading.value = false
-    oauthLoading.value = false
+  return {
+    accessToken: data.access_token,
+    expiresIn: data.expires_in,
+    sessionName: data.session_name,
   }
 }
 
@@ -235,36 +89,33 @@ async function initChat() {
     loadingText.value = '正在连接 AI 助手...'
     error.value = null
 
-    const accessToken = localStorage.getItem('coze_access_token')
-    if (!accessToken) {
-      throw new Error('未找到访问令牌')
-    }
+    // 1. 获取 Token（后端用私钥签名 JWT 换取）
+    const tokenData = await fetchToken()
+    console.log('[CozeChat] Token obtained for session:', tokenData.sessionName)
 
+    // 2. 加载 SDK
     await loadSDK()
 
-    // 确保 chatArea DOM 已渲染
-    const container = chatArea.value || document.getElementById('coze-chat-container')
-    if (!container) {
-      throw new Error('聊天容器未就绪')
-    }
-
+    // 3. 初始化 WebChatClient
+    // 官方推荐 isIframe: false，避免跨域和通信问题
+    const userId = getUserId()
     chatClient = new window.CozeWebSDK.WebChatClient({
       config: {
         type: 'bot',
         bot_id: BOT_ID,
-        isIframe: true,
+        isIframe: false,
       },
       auth: {
         type: 'token',
-        token: accessToken,
+        token: tokenData.accessToken,
         onRefreshToken: async () => {
           console.log('[CozeChat] Refreshing token...')
-          await refreshToken()
-          return localStorage.getItem('coze_access_token')
+          const newToken = await fetchToken()
+          return newToken.accessToken
         },
       },
       userInfo: {
-        id: 'student_' + Date.now(),
+        id: userId,
         url: 'https://lf-coze-web-cdn.coze.cn/obj/eden-cn/lm-lgvj/ljhwZthlaukjlkulzlp/coze/coze-logo.png',
         nickname: '学生用户',
       },
@@ -280,7 +131,7 @@ async function initChat() {
           isNeedClose: false,
         },
         asstBtn: {
-          isNeed: false,
+          isNeed: true,
         },
         footer: {
           isShow: false,
@@ -303,100 +154,28 @@ async function initChat() {
   }
 }
 
-// ==================== 重试 ====================
-function retry() {
-  error.value = null
-  if (isLoggedIn.value) {
-    initChat()
-  }
-}
-
 // ==================== 生命周期 ====================
 onMounted(() => {
   if (typeof window === 'undefined') return
-
-  // 检查是否是从 Coze 授权回调回来的
-  const url = new URL(window.location.href)
-  if (url.searchParams.get('code') || url.searchParams.get('error')) {
-    handleOAuthReturn()
-    return
-  }
-
-  // 正常加载：检查是否已登录
-  if (checkLoginStatus()) {
-    isLoggedIn.value = true
-    setTimeout(() => initChat(), 100)
-  }
+  // 延迟加载确保 DOM 就绪
+  setTimeout(initChat, 500)
 })
 
 onBeforeUnmount(() => {
-  if (chatClient) {
-    chatClient = null
+  if (chatClient && typeof chatClient.destroy === 'function') {
+    chatClient.destroy()
   }
+  chatClient = null
 })
 </script>
 
 <style scoped>
-.coze-login {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 500px;
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.coze-login-icon {
-  font-size: 64px;
-  margin-bottom: 20px;
-}
-
-.coze-login h3 {
-  margin: 0 0 12px;
-  font-size: 24px;
-  color: var(--vp-c-text-1);
-}
-
-.coze-login p {
-  margin: 0 0 24px;
-  color: var(--vp-c-text-2);
-  font-size: 14px;
-  max-width: 320px;
-}
-
-.coze-login-btn {
-  background: var(--vp-c-brand);
-  color: white;
-  border: none;
-  padding: 12px 40px;
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.coze-login-btn:hover:not(:disabled) {
-  background: var(--vp-c-brand-dark);
-}
-
-.coze-login-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.coze-login-tip {
-  margin-top: 16px !important;
-  font-size: 12px !important;
-  color: var(--vp-c-text-3) !important;
-}
-
 .coze-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 500px;
+  min-height: 400px;
   color: var(--vp-c-text-2);
 }
 
@@ -421,7 +200,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 500px;
+  min-height: 400px;
   color: var(--vp-c-danger);
   text-align: center;
   padding: 20px;

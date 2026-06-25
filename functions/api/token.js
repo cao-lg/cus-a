@@ -1,6 +1,9 @@
 /**
- * Coze OAuth JWT Token API - Cloudflare Pages Function
- * 参考 Python SDK 实现: https://github.com/coze-dev/coze-py
+ * Coze OAuth JWT Token Service - Cloudflare Pages Function
+ * 路径: /api/token
+ *
+ * 用私钥签名 JWT，调用 Coze API 换取 Access Token
+ * 每个学生用 session_name 隔离对话
  */
 
 const CONFIG = {
@@ -37,7 +40,6 @@ WIFglp0G1v/b2DhFu/L3tfTp/Q==
   COZE_API_BASE: 'https://api.coze.cn',
 };
 
-// Base64URL 编码
 function base64UrlEncode(str) {
   const bytes = new TextEncoder().encode(str);
   let binary = '';
@@ -82,7 +84,6 @@ async function importPrivateKey(pem) {
   );
 }
 
-// 生成随机 hex 字符串
 function randomHex(length) {
   const chars = '0123456789abcdef';
   let result = '';
@@ -102,7 +103,6 @@ async function signJWT(sessionName) {
     kid: CONFIG.PUBLIC_KEY_ID,
   };
 
-  // JTI 格式: timestamp:random_hex:random_hex (与 Python SDK 一致)
   const jti = `${now}:${randomHex(8)}:${randomHex(16)}`;
 
   const payload = {
@@ -111,12 +111,8 @@ async function signJWT(sessionName) {
     iat: now,
     exp: now + ttl,
     jti: jti,
+    session_name: sessionName,
   };
-
-  // 只在有 session_name 时添加
-  if (sessionName && sessionName !== 'anonymous') {
-    payload.session_name = sessionName;
-  }
 
   const headerStr = JSON.stringify(header);
   const payloadStr = JSON.stringify(payload);
@@ -136,19 +132,18 @@ async function signJWT(sessionName) {
   return `${signingInput}.${encodedSignature}`;
 }
 
-// 按照 Python SDK 方式请求 Token
-async function getCozeAccessToken(jwt, ttl = 900) {
+async function getCozeAccessToken(jwt) {
   const url = `${CONFIG.COZE_API_BASE}/api/permission/oauth2/token`;
 
   const body = {
-    duration_seconds: ttl,
+    duration_seconds: 86399,
     grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
   };
 
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${jwt}`,
+      Authorization: `Bearer ${jwt}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -188,13 +183,6 @@ export async function onRequest(context) {
     }
 
     const jwt = await signJWT(sessionName);
-
-    // 验证 JWT 格式
-    const parts = jwt.split('.');
-    if (parts.length !== 3) {
-      throw new Error(`Invalid JWT format: ${parts.length} parts`);
-    }
-
     const tokenData = await getCozeAccessToken(jwt);
 
     return new Response(
@@ -213,11 +201,7 @@ export async function onRequest(context) {
   } catch (error) {
     console.error('Token generation error:', error);
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message,
-        stack: error.stack,
-      }),
+      JSON.stringify({ success: false, error: error.message }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
